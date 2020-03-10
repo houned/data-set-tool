@@ -90,7 +90,7 @@ class bbox_filter():
                 f.write(os.path.splitext(basename)[0] + "\n")
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="add prefix on dataset pics")
+    parser = argparse.ArgumentParser(description="bbox filter for filtering Pascal VOC dataset")
     parser.add_argument('-a','--anno', type=str, help="annotation path")
     parser.add_argument('-i','--input', type=str, help="path of imageset txt")
     parser.add_argument('-o','--output', default="./out.txt", type=str, help="path of output txt")
