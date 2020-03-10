@@ -1,7 +1,7 @@
 """
 bbox滤波器，用于过滤 Pascal VOC 数据集。
 使用样例：
-python vocbbox_filter_2.py -a ./Annotations \
+python vocbbox_filter.py -a ./Annotations \
     -i ./ImageSets/Main/trainval.txt \
     -o ./out.txt \
     -t 3 \
