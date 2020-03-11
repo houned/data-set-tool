@@ -6,7 +6,8 @@ python vocbbox_filter.py -a ./Annotations \
     -o ./out.txt \
     -t 3 \
     -k width \
-    -f le
+    -f le \
+    -p any
 """
 import os
 import xml.etree.ElementTree as ET
@@ -21,6 +22,7 @@ class bbox_filter():
         self.op_func = None
         self.key = ""
         self.thred = 19
+        self.pattern = "any"
 
     # lt：less than 小于
     # le：less than or equal to 小于等于
@@ -28,8 +30,23 @@ class bbox_filter():
     # ne：not equal to 不等于
     # ge：greater than or equal to 大于等于
     # gt：greater than 大于
+    def op_func_lt(self, v1, v2):
+        return v1 < v2
+    
     def op_func_le(self, v1, v2):
         return v1 <= v2
+
+    def op_func_eq(self, v1, v2):
+        return v1 == v2
+
+    def op_func_ne(self, v1, v2):
+        return v1 != v2
+
+    def op_func_ge(self, v1, v2):
+        return v1 >= v2
+
+    def op_func_gt(self, v1, v2):
+        return v1 > v2
 
     #测试集xml路径生成器
     def dataset_gen(self):
@@ -64,7 +81,8 @@ class bbox_filter():
     def condition_filter(self):
         dic = {}
         for boxes, xml_url in self.bbox_gen():
-            isChosen = False
+            isChosen = []
+            chosen_val_lst = []
             for b in boxes:
                 xmin = b[0]
                 ymin = b[1]
@@ -76,11 +94,24 @@ class bbox_filter():
                 dic["ymax"] = ymax
                 dic["width"] = xmax - xmin +1
                 dic["height"] = ymax - ymin +1
-                isChosen = self.op_func(dic[self.key], self.thred)
-                if isChosen:
-                    print("{:4} is less or equal than thred".format(dic[self.key]))
-                    break
-            if isChosen:
+                ret = self.op_func(dic[self.key], self.thred)
+                isChosen.append(ret)
+                if ret:
+                    chosen_val_lst.append(dic[self.key])
+            if self.pattern == "any":
+                filt_res = True in isChosen
+            elif self.pattern == "all":
+                filt_res = not( False in isChosen )
+            else:
+                print("not support pattern:", self.pattern)
+                assert self.pattern == "any" or self.pattern == "all"
+
+            if filt_res:
+                print("{:20} is chosen, which {} is {}".format(
+                    os.path.splitext(os.path.split(xml_url)[1])[0],
+                    self.key,
+                    chosen_val_lst)
+                    )
                 yield xml_url
 
     def start(self):
@@ -93,10 +124,11 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="bbox filter for filtering Pascal VOC dataset")
     parser.add_argument('-a','--anno', type=str, help="annotation path")
     parser.add_argument('-i','--input', type=str, help="path of imageset txt")
-    parser.add_argument('-o','--output', default="./out.txt", type=str, help="path of output txt")
+    parser.add_argument('-o','--output', type=str, default="./out.txt", help="path of output txt")
     parser.add_argument('-t','--thred', type=int, help="filter threshold")
     parser.add_argument('-k','--key', type=str, help="keyword support: 'xmin','ymin','xmax','ymax','width', 'height'")
     parser.add_argument('-f','--func', type=str, help="filter func support: 'lt','le','eq','ne','ge', 'gt'")
+    parser.add_argument('-p','--pattern', type=str, default="any", help="filter pattern support: 'all' for all match,'any' for any match")
     args = parser.parse_args()
     print(args)
 
@@ -107,8 +139,19 @@ if __name__ == "__main__":
     bf.out_txt = args.output
     bf.key = args.key
     bf.thred = args.thred
-    if args.func == "le":
+    bf.pattern = args.pattern
+    if args.func == "lt":
+        bf.op_func = bf.op_func_lt
+    elif args.func == "le":
         bf.op_func = bf.op_func_le
+    elif args.func == "eq":
+        bf.op_func = bf.op_func_eq
+    elif args.func == "ne":
+        bf.op_func = bf.op_func_ne
+    elif args.func == "ge":
+        bf.op_func = bf.op_func_ge
+    elif args.func == "gt":
+        bf.op_func = bf.op_func_gt
     else:
         print("not support filter func '{}'".format(args.func))
     # bf.annopath = "/share/faster_rcnn-bk/data/VOCdevkit2007/VOC2007/Annotations"
