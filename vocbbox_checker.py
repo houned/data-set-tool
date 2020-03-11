@@ -90,7 +90,7 @@ class bbox_checker():
             boxes, xml_url = bbox
             width, height, depth, xml_url_2 = picinfo
             assert xml_url == xml_url_2
-            isChosen = False
+            isChosen = True
             #chosen_val_lst = []
             for b in boxes:
                 xmin = b[0]
@@ -100,17 +100,17 @@ class bbox_checker():
                 isNorm = True
                 if not self.point_checker(xmin, ymin, width, height):
                     isNorm = False
-                    err = "point checher abn (min point)"
+                    err = "point checker abn (min point)"
                 elif not self.point_checker(xmax, ymax, width, height):
                     isNorm = False
-                    err = "point checher abn (max point)"
+                    err = "point checker abn (max point)"
                 elif not self.width_checker(xmin, xmax):
                     isNorm = False
-                    err = "width checher abn"
+                    err = "width checker abn"
                 elif not self.height_checker(ymin, ymax):
                     isNorm = False
-                    err = "height checher abn"
-                isChosen = isChosen or (not isNorm)
+                    err = "height checker abn"
+                isChosen = isChosen and isNorm
                 if not isNorm:
                     print("{:20} is abnormal, pic size({:4},{:4}); with bbox {}, bbox size:({},{}), {}".format(
                         os.path.splitext(os.path.split(xml_url)[1])[0],
