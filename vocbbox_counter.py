@@ -84,7 +84,7 @@ class VocBboxCounter():
                 clss[ix] = cls
             yield boxes, clss, xml_url
         
-    #条件滤波器
+    #计数器
     def bbox_counter(self):
         dic = {}  
         # 用于保存结果
