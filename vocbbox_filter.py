@@ -1,12 +1,22 @@
 """
 bbox滤波器，用于过滤 Pascal VOC 数据集。
-使用样例：
+使用样例1：
+以bbox宽度为滤波条件
 python vocbbox_filter.py -a ./Annotations \
     -i ./ImageSets/Main/trainval.txt \
     -o ./out.txt \
     -t 3 \
     -k width \
     -f le \
+    -p any
+使用样例2：
+以bbox name为滤波条件
+python vocbbox_filter.py -a ./Annotations \
+    -i ./ImageSets/Main/trainval.txt \
+    -o ./out.txt \
+    -t ibm-p550 \
+    -k name \
+    -f eq \
     -p any
 """
 import os
@@ -63,6 +73,7 @@ class bbox_filter():
             num_objs = len(objs)
 
             boxes = np.zeros((num_objs, 4), dtype=np.uint16)
+            clss = [None]*num_objs
 
             # Load object bounding boxes into a data frame.
             for ix, obj in enumerate(objs):
@@ -75,15 +86,17 @@ class bbox_filter():
 
                 cls = obj.find('name').text.lower().strip()  #类别名
                 boxes[ix, :] = [x1, y1, x2, y2]
-            yield boxes, xml_url
+                clss[ix] = cls
+            yield boxes, clss, xml_url
         
     #条件滤波器
     def condition_filter(self):
         dic = {}
-        for boxes, xml_url in self.bbox_gen():
+        for boxes, clss, xml_url in self.bbox_gen():
+            assert len(boxes) == len(clss)
             isChosen = []
             chosen_val_lst = []
-            for b in boxes:
+            for b, n in zip(boxes, clss):
                 xmin = b[0]
                 ymin = b[1]
                 xmax = b[2]
@@ -94,6 +107,7 @@ class bbox_filter():
                 dic["ymax"] = ymax
                 dic["width"] = xmax - xmin +1
                 dic["height"] = ymax - ymin +1
+                dic["name"] = n
                 ret = self.op_func(dic[self.key], self.thred)
                 isChosen.append(ret)
                 if ret:
@@ -125,8 +139,8 @@ if __name__ == "__main__":
     parser.add_argument('-a','--anno', type=str, help="annotation path")
     parser.add_argument('-i','--input', type=str, help="path of imageset txt")
     parser.add_argument('-o','--output', type=str, default="./out.txt", help="path of output txt")
-    parser.add_argument('-t','--thred', type=int, help="filter threshold")
-    parser.add_argument('-k','--key', type=str, help="keyword support: 'xmin','ymin','xmax','ymax','width', 'height'")
+    parser.add_argument('-t','--thred', type=str, help="filter threshold")
+    parser.add_argument('-k','--key', type=str, help="keyword support: 'xmin','ymin','xmax','ymax','width','height','name'")
     parser.add_argument('-f','--func', type=str, help="filter func support: 'lt','le','eq','ne','ge', 'gt'")
     parser.add_argument('-p','--pattern', type=str, default="any", help="filter pattern support: 'all' for all match,'any' for any match")
     args = parser.parse_args()
@@ -138,7 +152,7 @@ if __name__ == "__main__":
     bf.txt_list = args.input
     bf.out_txt = args.output
     bf.key = args.key
-    bf.thred = args.thred
+    bf.thred = args.thred if args.key == "name" else float(args.thred)
     bf.pattern = args.pattern
     if args.func == "lt":
         bf.op_func = bf.op_func_lt
@@ -153,7 +167,9 @@ if __name__ == "__main__":
     elif args.func == "gt":
         bf.op_func = bf.op_func_gt
     else:
-        print("not support filter func '{}'".format(args.func))
+        raise Exception("not support filter func '{}'".format(args.func))
+    if args.key == "name" and args.func != "eq":
+        raise Exception("key 'name' only support filter func '{}'".format(args.func))
     # bf.annopath = "/share/faster_rcnn-bk/data/VOCdevkit2007/VOC2007/Annotations"
     # bf.txt_list = "/share/faster_rcnn-bk/data/VOCdevkit2007/VOC2007/ImageSets/Main/trainval.txt"
     # bf.out_txt = os.path.join(os.getcwd(), "out.txt")
